@@ -16,14 +16,15 @@ export default async function handler(req, res) {
   const idEvidence = `EVD-${dateStr}-${randomStr}`;
 
   // 2. Susun Caption Baru Sesuai Request
+  // 2. Susun Caption Baru Sesuai Request (Ganti pembatas <>)
   const caption = `📝 Laporan Replacement !!!\n\n` +
-                  `<><><><><><><><><><><><><><><><><>\n\n` +
+                  `================================\n\n` +
                   `🆔 <b>ID Evidence:</b> ${idEvidence}\n` +
                   `📡 <b>No Internet:</b> ${noInet}\n` +
                   `👷🏻‍♂️ <b>Nama:</b> ${nama} (${nik})\n` +
                   `🪪 <b>Jenis Pekerjaan:</b> ${jenisPekerjaan}\n` +
                   `🚧 <b>Keterangan:</b> ${keterangan}\n\n` +
-                  `<><><><><><><><><><><><><><><><><>\n\n` +
+                  `================================\n\n` +
                   `💾 - Tercatat di Spreadsheet`;
   
   const BOT_TOKEN = process.env.BOT_TOKEN;
