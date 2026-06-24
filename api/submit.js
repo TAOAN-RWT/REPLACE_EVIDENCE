@@ -22,18 +22,21 @@ export default async function handler(req, res) {
         body: JSON.stringify(payload)
     });
 
-    // 2. BACA BALASAN DARI GAS! (Jangan asal sukses)
+    // 2. BACA BALASAN DARI GAS!
     const gasData = await gasRes.json();
     
-    // Kalau GAS menolak (misal: "Nomor Internet sudah dilaporkan"), lempar error ke HP!
+    // Kalau GAS menolak (misal: "Nomor Internet sudah dilaporkan")
+    // Langsung kembalikan pesan itu ke HP secara halus (Status 200), jangan pakai throw Error
     if (gasData.status === "error") {
-        throw new Error(gasData.message);
+        return res.status(200).json({ success: false, error: gasData.message });
     }
 
+    // Kalau sukses, kembalikan status sukses
     res.status(200).json({ success: true, id: payload.idEvidence });
+    
   } catch (error) {
     console.error(error);
-    // Kirim pesan gagal supaya HP memunculkan Alert
-    res.status(500).json({ success: false, error: error.message });
+    // Ini baru error beneran kalau server mati atau koneksi putus
+    res.status(500).json({ success: false, error: "Gagal menghubungi server database." });
   }
 }
