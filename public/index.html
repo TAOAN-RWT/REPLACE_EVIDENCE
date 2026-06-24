@@ -92,28 +92,48 @@
     const modeIsi = document.getElementById("modeIsi");
     const selectNik = document.getElementById("nik");
     
-    // Logika Diri Sendiri vs Manual
+   // Logika Diri Sendiri vs Manual
     modeIsi.addEventListener("change", (e) => {
       selectNik.innerHTML = '<option value="">-- Pilih NIK --</option>';
       selectNik.disabled = false;
       
       if (e.target.value === "self") {
-        const myData = dbData.find(row => row.tgId == tgId);
+        
+        // 1. Cek apakah koneksi ke GAS sudah berhasil bawa data
+        if (dbData.length === 0) {
+          alert("Sabar, data dari database sedang ditarik. Coba klik lagi dalam beberapa detik!");
+          e.target.value = ""; // Reset pilihan
+          return;
+        }
+
+        // 2. Cek apakah ID Telegram terdeteksi
+        if (!tgId || tgId === "") {
+          alert("ID Telegram tidak terdeteksi! Pastikan kamu membuka form ini dari DALAM aplikasi Telegram.");
+          e.target.value = "";
+          return;
+        }
+
+        // 3. Pencarian ekstra ketat (Ubah ke String dan hapus spasi gaib)
+        const myData = dbData.find(row => String(row.tgId).trim() === String(tgId).trim());
+        
         if (myData) {
           selectNik.innerHTML = `<option value="${myData.nik}">${myData.nik}</option>`;
           selectNik.value = myData.nik;
           autoFill(myData.nik);
+          // (Opsional) Notif kecil kalau sukses nembak ID
+          // alert("Sip! ID Telegram " + tgId + " cocok dengan NIK: " + myData.nik); 
         } else {
-          alert("ID Telegram Anda tidak ditemukan di database.");
+          // Kalau beneran gak ada, munculkan ID-nya biar kamu bisa crosscheck ke Sheet
+          alert("ID Telegram kamu (" + tgId + ") belum terdaftar di database Kolom E.");
+          e.target.value = "";
         }
+        
       } else if (e.target.value === "manual") {
         dbData.forEach(row => {
           selectNik.innerHTML += `<option value="${row.nik}">${row.nik}</option>`;
         });
       }
     });
-
-    selectNik.addEventListener("change", (e) => autoFill(e.target.value));
 
     function autoFill(nik) {
       const data = dbData.find(row => row.nik == nik);
