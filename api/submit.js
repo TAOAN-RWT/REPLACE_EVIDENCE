@@ -6,54 +6,52 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
 
   const { 
-    nik, nama, branch, sa, tanggal, noInet, jenisPekerjaan, keterangan, 
+    nik, nama, branch, sa, tanggal, noInet, jenisPekerjaan, jenisTeknisi, keterangan, 
     fotoPekerjaan, fotoPelanggan, fotoBAST 
   } = req.body;
 
-  // 1. Generate ID Evidence Unik (Contoh: EVD-20260624-XXXX)
+  // 1. Generate ID Evidence Unik
   const dateStr = new Date().toISOString().slice(0,10).replace(/-/g, "");
   const randomStr = Math.random().toString(36).substring(2, 6).toUpperCase();
   const idEvidence = `EVD-${dateStr}-${randomStr}`;
 
-  // 2. Susun Caption untuk di Channel
-  const caption = `<b>Laporan Baru!</b>\n\n` +
-                  `<b>ID Evidence:</b> ${idEvidence}\n` +
-                  `<b>No Internet:</b> ${noInet}\n` +
-                  `<b>Nama:</b> ${nama} (${nik})\n` +
-                  `<b>Jenis Pekerjaan:</b> ${jenisPekerjaan}\n` +
-                  `<b>Keterangan:</b> ${keterangan}`;
+  // 2. Susun Caption Baru Sesuai Request
+  const caption = `📝 Laporan Replacement !!!\n\n` +
+                  `<><><><><><><><><><><><><><><><><>\n\n` +
+                  `🆔 <b>ID Evidence:</b> ${idEvidence}\n` +
+                  `📡 <b>No Internet:</b> ${noInet}\n` +
+                  `👷🏻‍♂️ <b>Nama:</b> ${nama} (${nik})\n` +
+                  `🪪 <b>Jenis Pekerjaan:</b> ${jenisPekerjaan}\n` +
+                  `🚧 <b>Keterangan:</b> ${keterangan}\n\n` +
+                  `<><><><><><><><><><><><><><><><><>\n\n` +
+                  `💾 - Tercatat di Spreadsheet`;
   
   const BOT_TOKEN = process.env.BOT_TOKEN;
   const CHANNEL_ID = "-1004426144664";
   const GAS_URL = "https://script.google.com/macros/s/AKfycbxYx2YJaBqqS1HrSYtdUHRLwVHrITDYBrdBT4tVtmQ7IyaAmLRWeySzdE-yTQbKaTg4/exec";
 
-  // Kumpulkan semua base64 file dalam 1 array
   const allPhotos = [...fotoPekerjaan, fotoPelanggan, fotoBAST];
 
   try {
-    // A. Kirim Foto ke Telegram Channel (Sebagai Album / MediaGroup)
+    // A. Kirim Foto ke Telegram Channel
     const formData = new FormData();
     formData.append('chat_id', CHANNEL_ID);
 
     const mediaArray = [];
 
     for (let i = 0; i < allPhotos.length; i++) {
-        // Hapus header base64 (data:image/jpeg;base64,)
         const base64Data = allPhotos[i].split(',')[1]; 
         const buffer = Buffer.from(base64Data, 'base64');
         const blob = new Blob([buffer], { type: 'image/jpeg' });
         
         const fieldName = `photo${i}`;
-        // Masukkan file fisik ke dalam FormData
         formData.append(fieldName, blob, `${fieldName}.jpg`);
 
-        // Buat objek untuk array media
         const mediaObj = {
             type: 'photo',
             media: `attach://${fieldName}`
         };
 
-        // Tambahkan caption HANYA pada foto pertama
         if (i === 0) {
             mediaObj.caption = caption;
             mediaObj.parse_mode = 'HTML';
@@ -62,26 +60,32 @@ export default async function handler(req, res) {
         mediaArray.push(mediaObj);
     }
 
-    // Masukkan array media (berupa JSON string) ke FormData
     formData.append('media', JSON.stringify(mediaArray));
 
-    // Eksekusi kirim ke Telegram
+    // Eksekusi kirim ke Telegram dan tangkap respons-nya
     const tgRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMediaGroup`, {
         method: 'POST',
         body: formData
     });
 
-    if (!tgRes.ok) {
+    let linkEviden = "-";
+    if (tgRes.ok) {
+        // Ambil Message ID untuk bikin Link Eviden
+        const tgData = await tgRes.json();
+        const msgId = tgData.result[0].message_id;
+        // Format Link Private Channel: hilangkan -100 dari ID
+        linkEviden = `https://t.me/c/4426144664/${msgId}`;
+    } else {
         const errTg = await tgRes.text();
         console.error("Error Telegram:", errTg);
     }
 
-    // B. Kirim Teks ke Spreadsheet (GAS)
+    // B. Kirim Teks ke Spreadsheet (GAS) termasuk Jenis Teknisi & Link Eviden
     await fetch(GAS_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            branch, sa, noInet, nama, nik, jenisPekerjaan, idEvidence, keterangan
+            branch, sa, noInet, nama, nik, jenisPekerjaan, jenisTeknisi, idEvidence, keterangan, linkEviden
         })
     });
 
