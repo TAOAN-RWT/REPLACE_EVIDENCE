@@ -35,30 +35,66 @@ export default async function handler(req, res) {
   // Kumpulkan semua base64 file dalam 1 array
   const allPhotos = [...fotoPekerjaan, fotoPelanggan, fotoBAST];
 
-  try {
-    // A. Kirim Foto ke Telegram Channel
+ try {
+    // A. Kirim Foto ke Telegram Channel (Sebagai Album / MediaGroup)
+    const formData = new FormData();
+    formData.append('chat_id', CHANNEL_ID);
+
+    const mediaArray = [];
+
     for (let i = 0; i < allPhotos.length; i++) {
         // Hapus header base64 (data:image/jpeg;base64,)
         const base64Data = allPhotos[i].split(',')[1]; 
         const buffer = Buffer.from(base64Data, 'base64');
+        const blob = new Blob([buffer], { type: 'image/jpeg' });
         
-        const formData = new FormData();
-        formData.append('chat_id', CHANNEL_ID);
+        const fieldName = `photo${i}`;
+        // Masukkan file fisik ke dalam FormData
+        formData.append(fieldName, blob, `${fieldName}.jpg`);
+
+        // Buat objek untuk array media
+        const mediaObj = {
+            type: 'photo',
+            media: `attach://${fieldName}`
+        };
+
         // Tambahkan caption HANYA pada foto pertama
         if (i === 0) {
-            formData.append('caption', caption);
-            formData.append('parse_mode', 'HTML');
+            mediaObj.caption = caption;
+            mediaObj.parse_mode = 'HTML';
         }
-        
-        // Buat blob dari buffer
-        const blob = new Blob([buffer], { type: 'image/jpeg' });
-        formData.append('photo', blob, `photo${i}.jpg`);
 
-        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
-            method: 'POST',
-            body: formData
-        });
+        mediaArray.push(mediaObj);
     }
+
+    // Masukkan array media (berupa JSON string) ke FormData
+    formData.append('media', JSON.stringify(mediaArray));
+
+    // Eksekusi kirim ke Telegram
+    const tgRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMediaGroup`, {
+        method: 'POST',
+        body: formData
+    });
+
+    if (!tgRes.ok) {
+        const errTg = await tgRes.text();
+        console.error("Error Telegram:", errTg);
+    }
+
+    // B. Kirim Teks ke Spreadsheet (GAS)
+    await fetch(GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            branch, sa, noInet, nama, nik, jenisPekerjaan, idEvidence, keterangan
+        })
+    });
+
+    res.status(200).json({ success: true, id: idEvidence });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, error: error.message });
+  }
 
     // B. Kirim Teks ke Spreadsheet (GAS)
     await fetch(GAS_URL, {
