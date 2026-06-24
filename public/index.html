@@ -17,8 +17,8 @@
   <h2>Laporan Pekerjaan</h2>
   <form id="formTeknisi">
     <label>Mode Pengisian:</label>
-    <select id="modeIsi" required>
-      <option value="">-- Pilih Mode --</option>
+    <select id="modeIsi" required disabled>
+      <option value="">-- Sedang Memuat Data... Tunggu ya --</option>
       <option value="self">Diri Sendiri (Auto Check ID Telegram)</option>
       <option value="manual">Manual</option>
     </select>
@@ -79,18 +79,31 @@
     const tgId = tg.initDataUnsafe?.user?.id?.toString() || ""; 
 
     let dbData = [];
-    const GAS_URL = "URL_GAS_KAMU_DISINI"; // MASUKKAN URL GAS DO_GET DISINI
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbxYx2YJaBqqS1HrSYtdUHRLwVHrITDYBrdBT4tVtmQ7IyaAmLRWeySzdE-yTQbKaTg4/exec"; // MASUKKAN URL GAS DO_GET DISINI
+
+    // Fetch DB saat web dibuka
+  const modeIsi = document.getElementById("modeIsi");
+    const selectNik = document.getElementById("nik");
 
     // Fetch DB saat web dibuka
     fetch(GAS_URL)
-      .then(res => res.json())
+      .then(async (res) => {
+        const contentType = res.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          throw new TypeError("URL GAS tidak merespons dengan benar. Pastikan akses GAS sudah 'Anyone'.");
+        }
+        return res.json();
+      })
       .then(data => {
         dbData = data;
-        populateManualSelect();
+        // Buka kunci dropdown kalau data sukses masuk
+        modeIsi.options[0].text = "-- Pilih Mode --";
+        modeIsi.disabled = false; 
+      })
+      .catch(err => {
+        alert("Gagal menarik data dari Database! \n\n" + err.message);
+        modeIsi.options[0].text = "-- Gagal Memuat Data --";
       });
-
-    const modeIsi = document.getElementById("modeIsi");
-    const selectNik = document.getElementById("nik");
     
    // Logika Diri Sendiri vs Manual
     modeIsi.addEventListener("change", (e) => {
@@ -120,8 +133,6 @@
           selectNik.innerHTML = `<option value="${myData.nik}">${myData.nik}</option>`;
           selectNik.value = myData.nik;
           autoFill(myData.nik);
-          // (Opsional) Notif kecil kalau sukses nembak ID
-          // alert("Sip! ID Telegram " + tgId + " cocok dengan NIK: " + myData.nik); 
         } else {
           // Kalau beneran gak ada, munculkan ID-nya biar kamu bisa crosscheck ke Sheet
           alert("ID Telegram kamu (" + tgId + ") belum terdaftar di database Kolom E.");
