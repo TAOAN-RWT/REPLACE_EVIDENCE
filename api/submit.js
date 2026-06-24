@@ -12,7 +12,6 @@ export default async function handler(req, res) {
   const randomStr = Math.random().toString(36).substring(2, 6).toUpperCase();
   payload.idEvidence = `EVD-${dateStr}-${randomStr}`;
 
-  // URL GAS Kamu
   const GAS_URL = "https://script.google.com/macros/s/AKfycbxYx2YJaBqqS1HrSYtdUHRLwVHrITDYBrdBT4tVtmQ7IyaAmLRWeySzdE-yTQbKaTg4/exec";
 
   try {
@@ -22,21 +21,18 @@ export default async function handler(req, res) {
         body: JSON.stringify(payload)
     });
 
-    // 2. BACA BALASAN DARI GAS!
     const gasData = await gasRes.json();
     
-    // Kalau GAS menolak (misal: "Nomor Internet sudah dilaporkan")
-    // Langsung kembalikan pesan itu ke HP secara halus (Status 200), jangan pakai throw Error
+    // JIKA GAS MENOLAK (Duplikat/Error), kirim status 400 + Pesan Error aslinya
     if (gasData.status === "error") {
-        return res.status(200).json({ success: false, error: gasData.message });
+        return res.status(400).json({ success: false, error: gasData.message });
     }
 
-    // Kalau sukses, kembalikan status sukses
+    // JIKA TRANSAKSI SUKSES
     res.status(200).json({ success: true, id: payload.idEvidence });
     
   } catch (error) {
     console.error(error);
-    // Ini baru error beneran kalau server mati atau koneksi putus
-    res.status(500).json({ success: false, error: "Gagal menghubungi server database." });
+    res.status(500).json({ success: false, error: "Gagal terhubung ke database." });
   }
 }
