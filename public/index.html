@@ -24,16 +24,17 @@
     </select>
 
     <label>NIK Teknisi:</label>
-    <select id="nik" required disabled><option value="">-- Pilih/Tunggu Data --</option></select>
+    <input type="text" id="nik" list="nikList" placeholder="Ketik NIK atau pilih..." required disabled autocomplete="off">
+    <datalist id="nikList"></datalist>
 
     <label>Nama Teknisi:</label>
-    <input type="text" id="nama" readonly required>
+    <input type="text" id="nama" required readonly>
 
     <label>Branch:</label>
-    <input type="text" id="branch" readonly required>
+    <input type="text" id="branch" required readonly>
 
     <label>SA:</label>
-    <input type="text" id="sa" readonly required>
+    <input type="text" id="sa" required readonly>
 
     <label>Tanggal Pekerjaan:</label>
     <input type="date" id="tanggal" required>
@@ -81,11 +82,12 @@
     let dbData = [];
     const GAS_URL = "https://script.google.com/macros/s/AKfycbxYx2YJaBqqS1HrSYtdUHRLwVHrITDYBrdBT4tVtmQ7IyaAmLRWeySzdE-yTQbKaTg4/exec"; // MASUKKAN URL GAS DO_GET DISINI
 
-    // Fetch DB saat web dibuka
-  const modeIsi = document.getElementById("modeIsi");
-    const selectNik = document.getElementById("nik");
-
-    // Fetch DB saat web dibuka
+   const modeIsi = document.getElementById("modeIsi");
+    const inputNik = document.getElementById("nik");
+    const datalistNik = document.getElementById("nikList");
+    const namaField = document.getElementById("nama");
+    const branchField = document.getElementById("branch");
+    const saField = document.getElementById("sa");// Fetch DB saat web dibuka
     fetch(GAS_URL)
       .then(async (res) => {
         const contentType = res.headers.get("content-type");
@@ -104,11 +106,16 @@
         alert("Gagal menarik data dari Database! \n\n" + err.message);
         modeIsi.options[0].text = "-- Gagal Memuat Data --";
       });
-    
-   // Logika Diri Sendiri vs Manual
+
+    // Logika Diri Sendiri vs Manual
     modeIsi.addEventListener("change", (e) => {
-      selectNik.innerHTML = '<option value="">-- Pilih NIK --</option>';
-      selectNik.disabled = false;
+      // Reset form setiap kali mode diganti
+      inputNik.value = "";
+      datalistNik.innerHTML = "";
+      inputNik.disabled = false;
+      
+      namaField.value = ""; branchField.value = ""; saField.value = "";
+      namaField.readOnly = false; branchField.readOnly = false; saField.readOnly = false;
       
       if (e.target.value === "self") {
         
@@ -126,32 +133,57 @@
           return;
         }
 
-        // 3. Pencarian ekstra ketat (Ubah ke String dan hapus spasi gaib)
+        // 3. Pencarian ekstra ketat
         const myData = dbData.find(row => String(row.tgId).trim() === String(tgId).trim());
         
         if (myData) {
-          selectNik.innerHTML = `<option value="${myData.nik}">${myData.nik}</option>`;
-          selectNik.value = myData.nik;
+          inputNik.value = myData.nik;
           autoFill(myData.nik);
+          // Kunci semua form karena mode Diri Sendiri
+          inputNik.readOnly = true;
+          namaField.readOnly = true; branchField.readOnly = true; saField.readOnly = true;
         } else {
-          // Kalau beneran gak ada, munculkan ID-nya biar kamu bisa crosscheck ke Sheet
           alert("ID Telegram kamu (" + tgId + ") belum terdaftar di database Kolom E.");
           e.target.value = "";
+          inputNik.disabled = true;
         }
         
       } else if (e.target.value === "manual") {
+        inputNik.readOnly = false;
+        // Isi datalist dengan semua data NIK sebagai autocomplete
         dbData.forEach(row => {
-          selectNik.innerHTML += `<option value="${row.nik}">${row.nik}</option>`;
+          if (row.nik) {
+            datalistNik.innerHTML += `<option value="${row.nik}">${row.nama}</option>`;
+          }
         });
       }
     });
 
+    // Fitur Auto-Search saat NIK diketik
+    inputNik.addEventListener("input", (e) => {
+      if (modeIsi.value === "manual") {
+        const val = e.target.value;
+        const data = dbData.find(row => String(row.nik).trim() === String(val).trim());
+        
+        if (data) {
+          // Kalau NIK yang diketik ADA di DB -> Autofill & Kunci
+          namaField.value = data.nama;
+          branchField.value = data.branch;
+          saField.value = data.sa;
+          namaField.readOnly = true; branchField.readOnly = true; saField.readOnly = true;
+        } else {
+          // Kalau NIK TIDAK ADA di DB -> Buka kunci agar bisa diketik manual
+          namaField.readOnly = false; branchField.readOnly = false; saField.readOnly = false;
+        }
+      }
+    });
+
     function autoFill(nik) {
-      const data = dbData.find(row => row.nik == nik);
+      const data = dbData.find(row => String(row.nik).trim() === String(nik).trim());
       if (data) {
-        document.getElementById("nama").value = data.nama;
-        document.getElementById("branch").value = data.branch;
-        document.getElementById("sa").value = data.sa;
+        namaField.value = data.nama;
+        branchField.value = data.branch;
+        saField.value = data.sa;
       }
     }
 
