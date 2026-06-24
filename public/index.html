@@ -246,7 +246,8 @@
         const b64Pelanggan = await compressImage(document.getElementById("fotoPelanggan").files[0]);
         const b64BAST = await compressImage(document.getElementById("fotoBAST").files[0]);
 
-        const payload = {
+       const payload = {
+          tgId: tgId, // <--- TAMBAHAN BARU INI (Kirim ID Telegram user)
           nik: document.getElementById("nik").value,
           nama: document.getElementById("nama").value,
           branch: document.getElementById("branch").value,
