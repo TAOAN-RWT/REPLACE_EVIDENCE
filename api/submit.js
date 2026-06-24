@@ -63,6 +63,7 @@ export default async function handler(req, res) {
     formData.append('media', JSON.stringify(mediaArray));
 
     // Eksekusi kirim ke Telegram dan tangkap respons-nya
+   // Eksekusi kirim ke Telegram dan tangkap respons-nya
     const tgRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMediaGroup`, {
         method: 'POST',
         body: formData
@@ -76,8 +77,12 @@ export default async function handler(req, res) {
         // Format Link Private Channel: hilangkan -100 dari ID
         linkEviden = `https://t.me/c/4426144664/${msgId}`;
     } else {
+        // JIKA GAGAL, TANGKAP ERRORNYA!
         const errTg = await tgRes.text();
         console.error("Error Telegram:", errTg);
+        
+        // Tulis pesan error dari Telegram ke kolom Link Eviden di Spreadsheet
+        linkEviden = `ERROR TG: ${errTg}`; 
     }
 
     // B. Kirim Teks ke Spreadsheet (GAS) termasuk Jenis Teknisi & Link Eviden
