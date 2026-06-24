@@ -16,18 +16,24 @@ export default async function handler(req, res) {
   const GAS_URL = "https://script.google.com/macros/s/AKfycbxYx2YJaBqqS1HrSYtdUHRLwVHrITDYBrdBT4tVtmQ7IyaAmLRWeySzdE-yTQbKaTg4/exec";
 
   try {
-    // 2. Langsung lempar semua data (termasuk Base64 foto) ke GAS
     const gasRes = await fetch(GAS_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
     });
 
-    if(!gasRes.ok) throw new Error("Gagal meneruskan data ke Database.");
+    // 2. BACA BALASAN DARI GAS! (Jangan asal sukses)
+    const gasData = await gasRes.json();
+    
+    // Kalau GAS menolak (misal: "Nomor Internet sudah dilaporkan"), lempar error ke HP!
+    if (gasData.status === "error") {
+        throw new Error(gasData.message);
+    }
 
     res.status(200).json({ success: true, id: payload.idEvidence });
   } catch (error) {
     console.error(error);
+    // Kirim pesan gagal supaya HP memunculkan Alert
     res.status(500).json({ success: false, error: error.message });
   }
 }
