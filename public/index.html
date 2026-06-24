@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Form Teknisi</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 15px; background: var(--tg-theme-bg-color); color: var(--tg-theme-text-color); }
+    label { display: block; margin-top: 10px; font-weight: bold; }
+    input, select, button { width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box; }
+    button { background: var(--tg-theme-button-color); color: var(--tg-theme-button-text-color); border: none; padding: 12px; margin-top: 20px; border-radius: 5px;}
+  </style>
+</head>
+<body>
+
+  <h2>Laporan Pekerjaan</h2>
+  <form id="formTeknisi">
+    <label>Mode Pengisian:</label>
+    <select id="modeIsi" required>
+      <option value="">-- Pilih Mode --</option>
+      <option value="self">Diri Sendiri (Auto Check ID Telegram)</option>
+      <option value="manual">Manual</option>
+    </select>
+
+    <label>NIK Teknisi:</label>
+    <select id="nik" required disabled><option value="">-- Pilih/Tunggu Data --</option></select>
+
+    <label>Nama Teknisi:</label>
+    <input type="text" id="nama" readonly required>
+
+    <label>Branch:</label>
+    <input type="text" id="branch" readonly required>
+
+    <label>SA:</label>
+    <input type="text" id="sa" readonly required>
+
+    <label>Tanggal Pekerjaan:</label>
+    <input type="date" id="tanggal" required>
+
+    <label>No Internet:</label>
+    <input type="text" id="noInet" required>
+
+    <label>Jenis Pekerjaan:</label>
+    <select id="jenisPekerjaan" required>
+      <option value="">-- Pilih --</option>
+      <option value="Replacement P1">Replacement P1</option>
+      <option value="Replacement Exclude P1">Replacement Exclude P1</option>
+    </select>
+
+    <label>Jenis Teknisi:</label>
+    <select id="jenisTeknisi" required>
+      <option value="">-- Pilih --</option>
+      <option value="Freelance">Freelance</option>
+      <option value="Dedicated">Dedicated</option>
+      <option value="Kemitraan">Kemitraan</option>
+      <option value="Insoruce">Insoruce</option>
+    </select>
+
+    <label>Eviden Pekerjaan (Maks 3):</label>
+    <input type="file" id="fotoPekerjaan" accept="image/*" multiple required>
+    <small id="fotoPekerjaanInfo"></small>
+
+    <label>Eviden Dengan Pelanggan (Maks 1):</label>
+    <input type="file" id="fotoPelanggan" accept="image/*" required>
+
+    <label>Eviden BAST + BA RTWH (Maks 1):</label>
+    <input type="file" id="fotoBAST" accept="image/*" required>
+
+    <label>Keterangan:</label>
+    <input type="text" id="keterangan" placeholder="Kasih noted jika ada eviden yang kurang" required>
+
+    <button type="submit" id="btnSubmit">Submit Laporan</button>
+  </form>
+
+  <script>
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+    const tgId = tg.initDataUnsafe?.user?.id?.toString() || ""; 
+
+    let dbData = [];
+    const GAS_URL = "URL_GAS_KAMU_DISINI"; // MASUKKAN URL GAS DO_GET DISINI
+
+    // Fetch DB saat web dibuka
+    fetch(GAS_URL)
+      .then(res => res.json())
+      .then(data => {
+        dbData = data;
+        populateManualSelect();
+      });
+
+    const modeIsi = document.getElementById("modeIsi");
+    const selectNik = document.getElementById("nik");
+    
+    // Logika Diri Sendiri vs Manual
+    modeIsi.addEventListener("change", (e) => {
+      selectNik.innerHTML = '<option value="">-- Pilih NIK --</option>';
+      selectNik.disabled = false;
+      
+      if (e.target.value === "self") {
+        const myData = dbData.find(row => row.tgId == tgId);
+        if (myData) {
+          selectNik.innerHTML = `<option value="${myData.nik}">${myData.nik}</option>`;
+          selectNik.value = myData.nik;
+          autoFill(myData.nik);
+        } else {
+          alert("ID Telegram Anda tidak ditemukan di database.");
+        }
+      } else if (e.target.value === "manual") {
+        dbData.forEach(row => {
+          selectNik.innerHTML += `<option value="${row.nik}">${row.nik}</option>`;
+        });
+      }
+    });
+
+    selectNik.addEventListener("change", (e) => autoFill(e.target.value));
+
+    function autoFill(nik) {
+      const data = dbData.find(row => row.nik == nik);
+      if (data) {
+        document.getElementById("nama").value = data.nama;
+        document.getElementById("branch").value = data.branch;
+        document.getElementById("sa").value = data.sa;
+      }
+    }
+
+    // Validasi file upload (maks 3)
+    document.getElementById("fotoPekerjaan").addEventListener("change", function() {
+      if (this.files.length > 3) {
+        alert("Maksimal 3 foto untuk Eviden Pekerjaan!");
+        this.value = ""; 
+      }
+    });
+
+    // Helper: Convert File to Base64
+    const toBase64 = file => new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+    });
+
+    // Handle Submit
+    document.getElementById("formTeknisi").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      document.getElementById("btnSubmit").innerText = "Mengirim... Mohon Tunggu";
+      document.getElementById("btnSubmit").disabled = true;
+
+      try {
+        // Collect Base64 Images
+        const filesPekerjaan = document.getElementById("fotoPekerjaan").files;
+        let b64Pekerjaan = [];
+        for (let file of filesPekerjaan) b64Pekerjaan.push(await toBase64(file));
+        
+        const b64Pelanggan = await toBase64(document.getElementById("fotoPelanggan").files[0]);
+        const b64BAST = await toBase64(document.getElementById("fotoBAST").files[0]);
+
+        const payload = {
+          nik: document.getElementById("nik").value,
+          nama: document.getElementById("nama").value,
+          branch: document.getElementById("branch").value,
+          sa: document.getElementById("sa").value,
+          tanggal: document.getElementById("tanggal").value,
+          noInet: document.getElementById("noInet").value,
+          jenisPekerjaan: document.getElementById("jenisPekerjaan").value,
+          jenisTeknisi: document.getElementById("jenisTeknisi").value,
+          keterangan: document.getElementById("keterangan").value,
+          fotoPekerjaan: b64Pekerjaan,
+          fotoPelanggan: b64Pelanggan,
+          fotoBAST: b64BAST
+        };
+
+        // Kirim ke Vercel API backend kita
+        const res = await fetch("/api/submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if(res.ok) {
+          tg.showAlert("Data berhasil disubmit!");
+          tg.close();
+        } else {
+          alert("Gagal submit data.");
+        }
+      } catch (err) {
+        alert("Error: " + err.message);
+      } finally {
+        document.getElementById("btnSubmit").innerText = "Submit Laporan";
+        document.getElementById("btnSubmit").disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
