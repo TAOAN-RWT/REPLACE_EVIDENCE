@@ -15,27 +15,22 @@ export default async function handler(req, res) {
   const randomStr = Math.random().toString(36).substring(2, 6).toUpperCase();
   const idEvidence = `EVD-${dateStr}-${randomStr}`;
 
-  // 2. Susun Caption untuk di Channel (-1004426144664)
+  // 2. Susun Caption untuk di Channel
   const caption = `<b>Laporan Baru!</b>\n\n` +
                   `<b>ID Evidence:</b> ${idEvidence}\n` +
                   `<b>No Internet:</b> ${noInet}\n` +
                   `<b>Nama:</b> ${nama} (${nik})\n` +
                   `<b>Jenis Pekerjaan:</b> ${jenisPekerjaan}\n` +
                   `<b>Keterangan:</b> ${keterangan}`;
-
-  // Karena ini Serverless Vercel dan kirim MediaGroup Base64 agak tricky, 
-  // Opsi paling aman: Kita pakai script fetch yang loop upload ke Telegram.
-  // Untuk kepraktisan, kita bisa kirim foto 1 per 1 dengan bot API "sendPhoto".
-  // Foto pertama memuat Caption ID.
   
   const BOT_TOKEN = process.env.BOT_TOKEN;
   const CHANNEL_ID = "-1004426144664";
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbxYx2YJaBqqS1HrSYtdUHRLwVHrITDYBrdBT4tVtmQ7IyaAmLRWeySzdE-yTQbKaTg4/exec"; // MASUKKAN URL GAS DO_POST DISINI
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbxYx2YJaBqqS1HrSYtdUHRLwVHrITDYBrdBT4tVtmQ7IyaAmLRWeySzdE-yTQbKaTg4/exec";
 
   // Kumpulkan semua base64 file dalam 1 array
   const allPhotos = [...fotoPekerjaan, fotoPelanggan, fotoBAST];
 
- try {
+  try {
     // A. Kirim Foto ke Telegram Channel (Sebagai Album / MediaGroup)
     const formData = new FormData();
     formData.append('chat_id', CHANNEL_ID);
@@ -80,21 +75,6 @@ export default async function handler(req, res) {
         const errTg = await tgRes.text();
         console.error("Error Telegram:", errTg);
     }
-
-    // B. Kirim Teks ke Spreadsheet (GAS)
-    await fetch(GAS_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            branch, sa, noInet, nama, nik, jenisPekerjaan, idEvidence, keterangan
-        })
-    });
-
-    res.status(200).json({ success: true, id: idEvidence });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, error: error.message });
-  }
 
     // B. Kirim Teks ke Spreadsheet (GAS)
     await fetch(GAS_URL, {
