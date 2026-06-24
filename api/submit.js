@@ -30,7 +30,7 @@ export default async function handler(req, res) {
   
   const BOT_TOKEN = process.env.BOT_TOKEN;
   const CHANNEL_ID = "-1004426144664";
-  const GAS_URL = "URL_GAS_KAMU_DISINI"; // MASUKKAN URL GAS DO_POST DISINI
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbxYx2YJaBqqS1HrSYtdUHRLwVHrITDYBrdBT4tVtmQ7IyaAmLRWeySzdE-yTQbKaTg4/exec"; // MASUKKAN URL GAS DO_POST DISINI
 
   // Kumpulkan semua base64 file dalam 1 array
   const allPhotos = [...fotoPekerjaan, fotoPelanggan, fotoBAST];
