@@ -261,21 +261,30 @@
           fotoBAST: b64BAST
         };
 
-        // Kirim ke Vercel API backend
+       // Kirim ke Vercel API backend
         const res = await fetch("/api/submit", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
 
-        if(res.ok) {
-          tg.showAlert("Data berhasil disubmit!");
-          tg.close();
+        // --- INI BAGIAN YANG DIUBAH (PENANGKAP ERROR CERDAS) ---
+        const data = await res.json(); // Baca isi balasan dari server
+        
+        if (!res.ok || data.success === false) {
+          // JIKA SERVER MENOLAK (Status bukan 200 atau success bernilai false)
+          // Tampilkan alert sesuai alasan penolakan asli dari GAS!
+          alert("⚠️ PENOLAKAN SYSTEM:\n" + (data.error || "Terjadi kesalahan."));
         } else {
-          alert("Gagal submit data.");
+          // JIKA BENAR-BENAR SUKSES
+          alert("📝 LAPORAN BERHASIL!\n\nID Evidence: " + data.id + "\nData sedang mengantre untuk dikirim ke Channel.");
+          document.getElementById("formTeknisi").reset(); // Kosongkan form
+          tg.close(); // Tutup mini app Telegram
         }
+        // --------------------------------------------------------
+
       } catch (err) {
-        alert("Error: " + err.message);
+        alert("❌ ERROR JARINGAN:\n" + err.message);
       } finally {
         document.getElementById("btnSubmit").innerText = "Submit Laporan";
         document.getElementById("btnSubmit").disabled = false;
